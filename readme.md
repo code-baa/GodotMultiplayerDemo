@@ -2,7 +2,7 @@
 
 ## About
 
-This project is a Godot 4.2 game implementation of a multiplayer game using an authoritative server architecture with client side prediction, server reconciliation, and lag compensation.
+This project is a Godot 4.4 implementation of a multiplayer game using an authoritative server architecture with client side prediction, server reconciliation, and lag compensation.
 
 I have made changes to implement 3D and mouse look.
 
