@@ -10,10 +10,15 @@ This project is a Godot 4.4 implementation of a multiplayer game using an author
 ## Features
 
 ☑️ Client side prediction and server reconciliation
+
 🔲 Lag compensation for hit detection
+
 ☑️ Client/Server clock synchronization
+
 ☑️ Pregame lobby
+
 ☑️ Server mode, client mode and host mode
+
 ☑️ Protobufs used for network messages
 
 
