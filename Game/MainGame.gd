@@ -63,6 +63,7 @@ func update_player(p: GameState.GameState.PlayerProto) -> void:
 	other_players[p.get_id()].position.x = p.get_position_x()
 	other_players[p.get_id()].position.y = p.get_position_y()
 	other_players[p.get_id()].position.z = p.get_position_z()
+	other_players[p.get_id()].rotation.y = p.get_rotation_y()
 	other_players[p.get_id()].state = p.get_state()
 
 func remove_player(player_id: int) -> void:

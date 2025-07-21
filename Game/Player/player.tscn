@@ -1,8 +1,15 @@
-[gd_scene load_steps=5 format=3 uid="uid://cp0lc4ylsdbh4"]
+[gd_scene load_steps=7 format=3 uid="uid://cp0lc4ylsdbh4"]
 
 [ext_resource type="Script" uid="uid://cgfcxkgtmqbdj" path="res://Game/Player/player.gd" id="1_siry4"]
 
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_s3asc"]
+albedo_color = Color(1, 0, 0, 1)
+
+[sub_resource type="PrismMesh" id="PrismMesh_m57qa"]
+material = SubResource("StandardMaterial3D_s3asc")
+
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_m57qa"]
+shading_mode = 0
 
 [sub_resource type="CapsuleMesh" id="CapsuleMesh_s3asc"]
 material = SubResource("StandardMaterial3D_m57qa")
@@ -15,6 +22,10 @@ script = ExtResource("1_siry4")
 
 [node name="Camera3D" type="Camera3D" parent="."]
 
+[node name="forward" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.295, 0, 0, 0, -1.28949e-08, 0.295, 0, -0.295, -1.28949e-08, 0, 0.814904, -0.350981)
+mesh = SubResource("PrismMesh_m57qa")
+
 [node name="mesh" type="MeshInstance3D" parent="."]
 mesh = SubResource("CapsuleMesh_s3asc")
 
@@ -26,13 +37,6 @@ target_position = Vector3(0, -30, 0)
 collision_mask = 2
 
 [node name="JumpTimer" type="Timer" parent="."]
-one_shot = true
-
-[node name="JumpBufferTimer" type="Timer" parent="."]
-one_shot = true
-
-[node name="CoyoteJumpTimer" type="Timer" parent="."]
-wait_time = 0.1
 one_shot = true
 
 [node name="DebugStatus" type="Label" parent="."]

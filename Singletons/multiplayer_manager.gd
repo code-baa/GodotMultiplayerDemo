@@ -27,7 +27,7 @@ var projectile_dict := {}
 
 const hard_reset_server_client_reconciliation_distance = 100     # the distance of player from servers expected position to cause a hard reset
 const soft_correction_server_client_reconciliation_distance = 1  # the distance of player from servers expected position to cause a soft interpolation
-const soft_correction_rate = .01							     # how quickly we should interpolate to where the server expected us
+const soft_correction_rate = .1						     # how quickly we should interpolate to where the server expected us
 var server_tick_rate := 1.0 / Engine.physics_ticks_per_second    # the millisecond time for each tick (for a physics tick of 60 this is 0.016666)
 
 signal player_connected_to_lobby(player_name: String)
@@ -168,7 +168,8 @@ func receive_game_state(game_state: PackedByteArray) -> void:
 				player.position.z = p.get_position_z()
 				player.state = p.get_state()
 				player.reapply_inputs(server_tick, server_tick_rate)
-			elif p.get_state() == enums.states.IDLE and player.state == enums.states.IDLE and diff > soft_correction_server_client_reconciliation_distance:
+			#elif p.get_state() == enums.states.IDLE and player.state == enums.states.IDLE and diff > soft_correction_server_client_reconciliation_distance:
+			elif diff > soft_correction_server_client_reconciliation_distance:
 				player.position.x += (p.get_position_x() - player.position.x) * soft_correction_rate
 				player.position.y += (p.get_position_y() - player.position.y) * soft_correction_rate
 				player.position.z += (p.get_position_z() - player.position.z) * soft_correction_rate
@@ -362,6 +363,7 @@ func _physics_process(_delta: float) -> void:
 		p.set_position_x(player_dict[player_id].position.x)
 		p.set_position_y(player_dict[player_id].position.y)
 		p.set_position_z(player_dict[player_id].position.z)
+		p.set_rotation_y(player_dict[player_id].rotation.y)
 		p.set_state(player_dict[player_id].state)
 		p.set_health(player_dict[player_id].health)
 	

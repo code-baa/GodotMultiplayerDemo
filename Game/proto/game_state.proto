@@ -16,9 +16,10 @@ message GameState {
 		float position_x = 1;
 		float position_y = 2;
 		float position_z = 3;
-		StateProto state = 4;
-		int32 health = 5;
-		string username = 6;
+		float rotation_y = 4;
+		StateProto state = 5;
+		int32 health = 6;
+		string username = 7;
 	}
 
 	message ProjectileProto {

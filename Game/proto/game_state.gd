@@ -756,17 +756,22 @@ class GameState:
 			service.field = __position_z
 			data[__position_z.tag] = service
 			
-			__state = PBField.new("state", PB_DATA_TYPE.ENUM, PB_RULE.OPTIONAL, 4, true, DEFAULT_VALUES_3[PB_DATA_TYPE.ENUM])
+			__rotation_y = PBField.new("rotation_y", PB_DATA_TYPE.FLOAT, PB_RULE.OPTIONAL, 4, true, DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT])
+			service = PBServiceField.new()
+			service.field = __rotation_y
+			data[__rotation_y.tag] = service
+			
+			__state = PBField.new("state", PB_DATA_TYPE.ENUM, PB_RULE.OPTIONAL, 5, true, DEFAULT_VALUES_3[PB_DATA_TYPE.ENUM])
 			service = PBServiceField.new()
 			service.field = __state
 			data[__state.tag] = service
 			
-			__health = PBField.new("health", PB_DATA_TYPE.INT32, PB_RULE.OPTIONAL, 5, true, DEFAULT_VALUES_3[PB_DATA_TYPE.INT32])
+			__health = PBField.new("health", PB_DATA_TYPE.INT32, PB_RULE.OPTIONAL, 6, true, DEFAULT_VALUES_3[PB_DATA_TYPE.INT32])
 			service = PBServiceField.new()
 			service.field = __health
 			data[__health.tag] = service
 			
-			__username = PBField.new("username", PB_DATA_TYPE.STRING, PB_RULE.OPTIONAL, 6, true, DEFAULT_VALUES_3[PB_DATA_TYPE.STRING])
+			__username = PBField.new("username", PB_DATA_TYPE.STRING, PB_RULE.OPTIONAL, 7, true, DEFAULT_VALUES_3[PB_DATA_TYPE.STRING])
 			service = PBServiceField.new()
 			service.field = __username
 			data[__username.tag] = service
@@ -825,6 +830,19 @@ class GameState:
 		func set_position_z(value : float) -> void:
 			__position_z.value = value
 		
+		var __rotation_y: PBField
+		func has_rotation_y() -> bool:
+			if __rotation_y.value != null:
+				return true
+			return false
+		func get_rotation_y() -> float:
+			return __rotation_y.value
+		func clear_rotation_y() -> void:
+			data[4].state = PB_SERVICE_STATE.UNFILLED
+			__rotation_y.value = DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT]
+		func set_rotation_y(value : float) -> void:
+			__rotation_y.value = value
+		
 		var __state: PBField
 		func has_state() -> bool:
 			if __state.value != null:
@@ -833,7 +851,7 @@ class GameState:
 		func get_state():
 			return __state.value
 		func clear_state() -> void:
-			data[4].state = PB_SERVICE_STATE.UNFILLED
+			data[5].state = PB_SERVICE_STATE.UNFILLED
 			__state.value = DEFAULT_VALUES_3[PB_DATA_TYPE.ENUM]
 		func set_state(value) -> void:
 			__state.value = value
@@ -846,7 +864,7 @@ class GameState:
 		func get_health() -> int:
 			return __health.value
 		func clear_health() -> void:
-			data[5].state = PB_SERVICE_STATE.UNFILLED
+			data[6].state = PB_SERVICE_STATE.UNFILLED
 			__health.value = DEFAULT_VALUES_3[PB_DATA_TYPE.INT32]
 		func set_health(value : int) -> void:
 			__health.value = value
@@ -859,7 +877,7 @@ class GameState:
 		func get_username() -> String:
 			return __username.value
 		func clear_username() -> void:
-			data[6].state = PB_SERVICE_STATE.UNFILLED
+			data[7].state = PB_SERVICE_STATE.UNFILLED
 			__username.value = DEFAULT_VALUES_3[PB_DATA_TYPE.STRING]
 		func set_username(value : String) -> void:
 			__username.value = value

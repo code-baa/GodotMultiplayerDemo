@@ -101,6 +101,7 @@ static func calc_offset(local_time_ms: int,							# the local engine ms tick (Ti
 		# tick difference betwene client and server is less than 6 or greater than 20
 		# we're outside our allowable range, we need to return an offset that would appropriately nudge us back into our allowable
 		# range and closer to our ideal_client_tick_buffer
+			
 		return ideal_client_tick_buffer_ - client_tick_buffer
 	return 0 # otherwise we just send 0 offset back, because we are in allowable range and no adjustment is needed
 

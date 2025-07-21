@@ -44,11 +44,22 @@ var debug := true
 var id: int
 #TODO: optimize if needed
 var input_dict := {}
+@export var mouse_sensitivity = 0.1
+var mouse_unlocked : bool = false
 var state := enums.states.IDLE
 var stats := PlayerStats.BaseChar.new()
 var direction := enums.directions.RIGHT
 var projectile_id := 0
 var username := ""
+@export var max_speed = 15.0
+@export var sprint_speed = 12.0
+@export var run_speed = 9.0
+@export var move_acceleration = 4.0
+@export var stop_drag = 0.9
+var move_drag = 0.0
+var move_dir : Vector3
+
+
 
 signal health_updated(new_health: int)
 
@@ -78,25 +89,23 @@ signal add_projectile(projectile: Projectile)
 # used for collision lag compensation
 var previous_positions := {}
 
+
+
+
+
+
+
+
 ##################################################################################################
 # Client functions
 ##################################################################################################
 func process_client_inputs(tick: int) -> void: # captures real-time inputs and stores them per server tick
 	var input := PlayerInput.new()
-	if not Input.is_action_pressed("forward") and not Input.is_action_pressed("backward") and not Input.is_action_pressed("left") and not Input.is_action_pressed("right"):
-		input.movement = enums.movement_input.NONE
-	elif ((Input.is_action_pressed("forward") and Input.is_action_pressed("backward"))) or (Input.is_action_pressed("right") and Input.is_action_pressed("left")):
-		input.movement = enums.movement_input.NONE
-	elif Input.is_action_pressed("forward"):
-		input.movement = enums.movement_input.MOVE_FORWARD
-	elif Input.is_action_pressed("backward"):
-		input.movement = enums.movement_input.MOVE_BACKWARD
-	elif Input.is_action_pressed("right"):
-		input.movement = enums.movement_input.MOVE_RIGHT
-	elif Input.is_action_pressed("left"):
-		input.movement = enums.movement_input.MOVE_LEFT
-
-		
+	var input_dir = Input.get_vector("move_left", "move_right", "move_forward", "move_backward")
+	input.movement_x = input_dir.x
+	input.movement_y = input_dir.y
+	input.rotation_y = rotation.y
+	
 	if Input.is_action_pressed("jump"):
 		input.jump = true
 	else:
@@ -113,10 +122,19 @@ func process_client_inputs(tick: int) -> void: # captures real-time inputs and s
 		var input_proto: PlayerInputProto.InputDictProto = PlayerInputProto.InputDictProto.new()
 		for key: int in input_dict.keys():
 			var i: PlayerInputProto.InputDictProto.PlayerInputProto = input_proto.add_inputs(key)
-			i.set_movement(input_dict[key].movement)
+			i.set_movement_x(input_dict[key].movement_x)
+			i.set_movement_y(input_dict[key].movement_y)
+			i.set_rotation_y(input_dict[key].rotation_y)
 			i.set_attack(input_dict[key].attack)
 			i.set_jump(input_dict[key].jump)
 		MultiplayerManager.recieve_player_input.rpc_id(1, input_proto.to_bytes())
+	
+	
+func set_move_dir(new_move_dir : Vector3):
+	move_dir = new_move_dir
+	move_dir.y = 0.0
+	move_dir = move_dir.normalized()
+	
 	
 func prune_old_inputs(server_tick: int) -> void: # removes inputs and reconciliation data older than the servers current tick
 	#TODO: optimize if needed
@@ -124,6 +142,7 @@ func prune_old_inputs(server_tick: int) -> void: # removes inputs and reconcilia
 		if tick < server_tick:
 			input_dict.erase(tick)
 			previous_inputs_and_positions.erase(tick)
+
 
 func reapply_inputs(server_tick: int, delta: float) -> void: # used for client-side prediction. 
 	var client_tick := Clock.tick
@@ -137,6 +156,14 @@ func reapply_inputs(server_tick: int, delta: float) -> void: # used for client-s
 		p["position"] = position
 		previous_inputs_and_positions[t] = p
 		t += 1
+	
+	
+	
+	
+	
+	
+	
+	
 	
 ##################################################################################################
 # Server functions
@@ -152,7 +179,9 @@ func update_input_dict(input_proto: PackedByteArray, _server_tick: int) -> void:
 		if input_dict.has(each_tick) or each_tick < Clock.tick:
 			continue
 		var p: PlayerInput = PlayerInput.new()
-		p.movement = proto_dict[each_tick].get_movement()
+		p.movement_x = proto_dict[each_tick].get_movement_x()
+		p.movement_y = proto_dict[each_tick].get_movement_y()
+		p.rotation_y = proto_dict[each_tick].get_rotation_y()
 		p.attack = proto_dict[each_tick].get_attack()
 		p.jump = proto_dict[each_tick].get_jump()
 		input_dict[each_tick] = p
@@ -171,6 +200,18 @@ func prune_previous_positions() -> void: # ensures the rollback buffer
 			previous_positions.erase(min_key + i)
 			i = i + 1
 
+
+
+
+
+
+
+
+
+
+
+
+
 ##################################################################################################
 # Shared functions
 ##################################################################################################
@@ -181,21 +222,42 @@ func _ready() -> void:
 	#	var camera := Camera3D.new()
 	#	add_child(camera)
 		camera_3d.make_current()
+		Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
 		#camera.position_smoothing_enabled = true
 		#camera.position_smoothing_speed = 5
 		#camera.limit_bottom = 250
 		health = stats.max_health
 
+
 func set_id(id_: int) -> void:
 	id = id_
+	
+func _input(event):
+	if Input.is_action_just_pressed('exit'):
+		get_tree().quit()
+	if Input.is_action_just_pressed('unlock_mouse'):
+		mouse_unlocked = !mouse_unlocked
+		if mouse_unlocked:
+			Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
+		else:
+			Input.mouse_mode = Input.MOUSE_MODE_CAPTURED
+	if mouse_unlocked:
+		return
+	if event is InputEventMouseMotion:
+		rotate_y(deg_to_rad(-event.relative.x * mouse_sensitivity))
+		camera_3d.rotate_x(deg_to_rad(-event.relative.y * mouse_sensitivity))
+		camera_3d.rotation.x = clamp(camera_3d.rotation.x, deg_to_rad(-89), deg_to_rad(89))
+
 	
 func set_username(username_: String) -> void:
 	if username != username_:
 		username = username_
 		$Name.text = username_
 
+
 func get_random_spawn_point() -> Vector3:
 	return Vector3(randi_range(spawn_position_x_min, spawn_position_x_max), spawn_position_y, randi_range(spawn_position_x_min, spawn_position_x_max))
+
 
 func _physics_process(delta: float) -> void:
 	update_material()
@@ -206,7 +268,7 @@ func _physics_process(delta: float) -> void:
 	var current_tick := Clock.tick
 	if this_player and !MultiplayerManager.is_server:
 		process_client_inputs(current_tick)
-	if position.y > 500:
+	if position.y < -50:
 		fell_off()
 	
 	var last_input: PlayerInput = apply_inputs(current_tick)
@@ -231,15 +293,14 @@ func apply_physics(delta: float) -> void:
 		return
 	if not is_on_floor():
 		velocity.y -= _get_gravity() * delta
+		
 		if velocity.y > stats.terminal_velocity:
 			velocity.y = stats.terminal_velocity
 		if state != enums.states.JUMPING and state != enums.states.LANDING:
 			if state == enums.states.MOVE:
 				$CoyoteJumpTimer.start(coyote_jump_time)
 			state = enums.states.FALLING
-			
-	if !$JumpBufferTimer.is_stopped() and is_on_floor() and can_jump():
-		jump()
+
 	
 	if state == enums.states.FALLING and $FloorDetector.is_colliding():
 		state = enums.states.LANDING
@@ -251,37 +312,28 @@ func apply_physics(delta: float) -> void:
 	
 	
 func apply_inputs(tick: int) -> PlayerInput:
-	var i: PlayerInput = input_dict.get(tick)
-	if i == null:
+	var input: PlayerInput = input_dict.get(tick)
+	if input == null:
 		return null
-	match i.movement:
-		enums.movement_input.NONE:
-			velocity.x = 0
-			velocity.z = 0
+
+	rotation.y = input.rotation_y
+	move_dir = (transform.basis * Vector3(input.movement_x, 0, input.movement_y))
+	move_drag = float(move_acceleration) / max_speed
+	var drag = move_drag
+	if move_dir.is_zero_approx():
+		drag = stop_drag
 			
-		enums.movement_input.MOVE_FORWARD:
-			velocity.z = -stats.speed
-			direction = enums.directions.FORWARD
-			
-		enums.movement_input.MOVE_BACKWARD:
-			velocity.z = stats.speed
-			direction = enums.directions.BACKWARD
-			
-		enums.movement_input.MOVE_RIGHT:
-			velocity.x = stats.speed
-			direction = enums.directions.RIGHT
-			
-		enums.movement_input.MOVE_LEFT:
-			velocity.x = -stats.speed
-			direction = enums.directions.LEFT
+	var flat_velocity = velocity
+	flat_velocity.y = 0.0
+	velocity += move_acceleration * move_dir - flat_velocity * drag
 	
-	if i.jump:
+	if input.jump:
 		jump()
 		
-	if i.attack:
+	if input.attack:
 		attack()
 		
-	return i
+	return input
 		
 		
 func update_material() -> void:
@@ -298,19 +350,13 @@ func jump() -> void:
 		return
 	if state == enums.states.JUMPING:
 		return
-	if is_on_floor() and can_jump():
-		_jump()
-		$JumpBufferTimer.stop()
-	elif !$CoyoteJumpTimer.is_stopped():
-		_jump()
-	else:
-		$JumpBufferTimer.start(jump_buffer_time)
+	_jump()
 
 
 func _jump() -> void:
-	velocity.y = +stats.jump_speed
+	#velocity.y = +stats.jump_speed
+	velocity.y = stats.jump_force
 	state = enums.states.JUMPING
-	$JumpTimer.start(stats.jump_time)
 
 
 func attack() -> void:

@@ -715,35 +715,71 @@ class InputDictProto:
 		func _init():
 			var service
 			
-			__movement = PBField.new("movement", PB_DATA_TYPE.ENUM, PB_RULE.OPTIONAL, 0, true, DEFAULT_VALUES_3[PB_DATA_TYPE.ENUM])
+			__movement_x = PBField.new("movement_x", PB_DATA_TYPE.FLOAT, PB_RULE.OPTIONAL, 0, true, DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT])
 			service = PBServiceField.new()
-			service.field = __movement
-			data[__movement.tag] = service
+			service.field = __movement_x
+			data[__movement_x.tag] = service
 			
-			__jump = PBField.new("jump", PB_DATA_TYPE.BOOL, PB_RULE.OPTIONAL, 1, true, DEFAULT_VALUES_3[PB_DATA_TYPE.BOOL])
+			__movement_y = PBField.new("movement_y", PB_DATA_TYPE.FLOAT, PB_RULE.OPTIONAL, 1, true, DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT])
+			service = PBServiceField.new()
+			service.field = __movement_y
+			data[__movement_y.tag] = service
+			
+			__rotation_y = PBField.new("rotation_y", PB_DATA_TYPE.FLOAT, PB_RULE.OPTIONAL, 2, true, DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT])
+			service = PBServiceField.new()
+			service.field = __rotation_y
+			data[__rotation_y.tag] = service
+			
+			__jump = PBField.new("jump", PB_DATA_TYPE.BOOL, PB_RULE.OPTIONAL, 3, true, DEFAULT_VALUES_3[PB_DATA_TYPE.BOOL])
 			service = PBServiceField.new()
 			service.field = __jump
 			data[__jump.tag] = service
 			
-			__attack = PBField.new("attack", PB_DATA_TYPE.BOOL, PB_RULE.OPTIONAL, 2, true, DEFAULT_VALUES_3[PB_DATA_TYPE.BOOL])
+			__attack = PBField.new("attack", PB_DATA_TYPE.BOOL, PB_RULE.OPTIONAL, 4, true, DEFAULT_VALUES_3[PB_DATA_TYPE.BOOL])
 			service = PBServiceField.new()
 			service.field = __attack
 			data[__attack.tag] = service
 			
 		var data = {}
 		
-		var __movement: PBField
-		func has_movement() -> bool:
-			if __movement.value != null:
+		var __movement_x: PBField
+		func has_movement_x() -> bool:
+			if __movement_x.value != null:
 				return true
 			return false
-		func get_movement():
-			return __movement.value
-		func clear_movement() -> void:
+		func get_movement_x() -> float:
+			return __movement_x.value
+		func clear_movement_x() -> void:
 			data[0].state = PB_SERVICE_STATE.UNFILLED
-			__movement.value = DEFAULT_VALUES_3[PB_DATA_TYPE.ENUM]
-		func set_movement(value) -> void:
-			__movement.value = value
+			__movement_x.value = DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT]
+		func set_movement_x(value : float) -> void:
+			__movement_x.value = value
+		
+		var __movement_y: PBField
+		func has_movement_y() -> bool:
+			if __movement_y.value != null:
+				return true
+			return false
+		func get_movement_y() -> float:
+			return __movement_y.value
+		func clear_movement_y() -> void:
+			data[1].state = PB_SERVICE_STATE.UNFILLED
+			__movement_y.value = DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT]
+		func set_movement_y(value : float) -> void:
+			__movement_y.value = value
+		
+		var __rotation_y: PBField
+		func has_rotation_y() -> bool:
+			if __rotation_y.value != null:
+				return true
+			return false
+		func get_rotation_y() -> float:
+			return __rotation_y.value
+		func clear_rotation_y() -> void:
+			data[2].state = PB_SERVICE_STATE.UNFILLED
+			__rotation_y.value = DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT]
+		func set_rotation_y(value : float) -> void:
+			__rotation_y.value = value
 		
 		var __jump: PBField
 		func has_jump() -> bool:
@@ -753,7 +789,7 @@ class InputDictProto:
 		func get_jump() -> bool:
 			return __jump.value
 		func clear_jump() -> void:
-			data[1].state = PB_SERVICE_STATE.UNFILLED
+			data[3].state = PB_SERVICE_STATE.UNFILLED
 			__jump.value = DEFAULT_VALUES_3[PB_DATA_TYPE.BOOL]
 		func set_jump(value : bool) -> void:
 			__jump.value = value
@@ -766,18 +802,10 @@ class InputDictProto:
 		func get_attack() -> bool:
 			return __attack.value
 		func clear_attack() -> void:
-			data[2].state = PB_SERVICE_STATE.UNFILLED
+			data[4].state = PB_SERVICE_STATE.UNFILLED
 			__attack.value = DEFAULT_VALUES_3[PB_DATA_TYPE.BOOL]
 		func set_attack(value : bool) -> void:
 			__attack.value = value
-		
-		enum Movement {
-			NONE = 0,
-			MOVE_FORWARD = 1,
-			MOVE_BACKWARD = 2,
-			MOVE_RIGHT = 3,
-			MOVE_LEFT = 4
-		}
 		
 		func _to_string() -> String:
 			return PBPacker.message_to_string(data)

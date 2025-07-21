@@ -6,11 +6,11 @@ class BaseChar:
 	
 	#movement related stats	
 	var speed := 20
-	var jump_gravity := 350
+	var jump_gravity := 30.0
 	var fall_gravity := 2200
 	var terminal_velocity := 1000
-	var jump_speed := 75
-	var jump_time := 0.35
+	var jump_force := 15.0
+	#var jump_time := 0.35
 	
 	#attack related stats
 	var attack_recharge_time := 0.2

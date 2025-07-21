@@ -1,0 +1,14 @@
+syntax = "proto3";
+
+message InputDictProto {
+    message PlayerInputProto {
+
+        float movement_x = 0;
+        float movement_y = 1;
+		float rotation_y = 2;
+        bool jump = 3;
+        bool attack = 4;
+    }
+
+    map<int64, PlayerInputProto> inputs = 0;
+}

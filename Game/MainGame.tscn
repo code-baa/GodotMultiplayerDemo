@@ -1,7 +1,9 @@
-[gd_scene load_steps=9 format=3 uid="uid://cxqjgrh6gip40"]
+[gd_scene load_steps=11 format=3 uid="uid://cxqjgrh6gip40"]
 
 [ext_resource type="Script" uid="uid://cli2rjjxpvayg" path="res://Game/MainGame.gd" id="1_slolc"]
 [ext_resource type="PackedScene" uid="uid://bexqieh0f6pi4" path="res://Game/HUD.tscn" id="2_c3r4b"]
+[ext_resource type="Texture2D" uid="uid://ckbwwjjhklwgr" path="res://Textures/texture_08.png" id="2_qfkit"]
+[ext_resource type="Texture2D" uid="uid://cvkc2y0w4cso0" path="res://Textures/player_face.png" id="3_egcv1"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_yws65"]
 sky_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
@@ -20,6 +22,14 @@ glow_enabled = true
 size = Vector3(100, 1, 100)
 
 [sub_resource type="StandardMaterial3D" id="StandardMaterial3D_yws65"]
+albedo_texture = ExtResource("2_qfkit")
+metallic = 1.0
+emission_energy_multiplier = 1.34
+rim = 0.92
+rim_tint = 0.64
+rim_texture = ExtResource("3_egcv1")
+uv1_scale = Vector3(0.25, 0.25, 0.25)
+uv1_triplanar = true
 
 [sub_resource type="BoxMesh" id="BoxMesh_xvp8g"]
 material = SubResource("StandardMaterial3D_yws65")
@@ -29,7 +39,7 @@ size = Vector3(100, 1, 100)
 script = ExtResource("1_slolc")
 
 [node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
-transform = Transform3D(-0.866023, -0.433016, 0.250001, 0, 0.499998, 0.866027, -0.500003, 0.749999, -0.43301, 0, 0, 0)
+transform = Transform3D(-0.866024, -0.433016, 0.250001, 0, 0.499998, 0.866026, -0.500003, 0.749999, -0.43301, 0, 2.47643, 0)
 shadow_enabled = true
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="."]
