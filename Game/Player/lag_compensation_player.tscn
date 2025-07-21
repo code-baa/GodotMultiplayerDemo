@@ -1,20 +1,30 @@
-[gd_scene load_steps=4 format=3 uid="uid://batlpdhq6iguv"]
+[gd_scene load_steps=6 format=3 uid="uid://batlpdhq6iguv"]
 
-[ext_resource type="Script" path="res://Game/Player/lag_compensation_player.gd" id="1_kji2k"]
+[ext_resource type="Script" uid="uid://drwgxh6wlbei0" path="res://Game/Player/lag_compensation_player.gd" id="1_kji2k"]
 [ext_resource type="Texture2D" uid="uid://dghq2ggarlkfq" path="res://Textures/hit_playerpng.png" id="2_1yixa"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_xkwma"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_bjvcx"]
 
-[node name="LagCompensationPlayer" type="Area2D"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_bjvcx"]
+transparency = 1
+albedo_texture = ExtResource("2_1yixa")
+texture_filter = 2
+billboard_mode = 3
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="QuadMesh" id="QuadMesh_ulkqd"]
+material = SubResource("StandardMaterial3D_bjvcx")
+
+[node name="LagCompensationPlayer" type="Area3D"]
 collision_layer = 8
 collision_mask = 0
 script = ExtResource("1_kji2k")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("RectangleShape2D_xkwma")
+[node name="CollisionShape2D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_bjvcx")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
+[node name="Sprite2D" type="MeshInstance3D" parent="."]
 visible = false
-modulate = Color(1, 1, 1, 0.278431)
-z_index = 100
-texture = ExtResource("2_1yixa")
+mesh = SubResource("QuadMesh_ulkqd")

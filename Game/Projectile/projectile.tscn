@@ -1,24 +1,36 @@
-[gd_scene load_steps=4 format=3 uid="uid://bwtajlwl1x5u6"]
+[gd_scene load_steps=6 format=3 uid="uid://bwtajlwl1x5u6"]
 
-[ext_resource type="Script" path="res://Game/Projectile/projectile.gd" id="1_10ck3"]
+[ext_resource type="Script" uid="uid://csugosukgeh6t" path="res://Game/Projectile/projectile.gd" id="1_10ck3"]
 [ext_resource type="Texture2D" uid="uid://bwgs7mjmo3o1h" path="res://Textures/one_white_pixel.png" id="2_6mqg4"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_m4ep4"]
-size = Vector2(5, 5)
+[sub_resource type="BoxShape3D" id="BoxShape3D_uwt0r"]
 
-[node name="Projectile" type="Area2D"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_uwt0r"]
+transparency = 1
+albedo_texture = ExtResource("2_6mqg4")
+texture_filter = 2
+billboard_mode = 3
+particles_anim_h_frames = 1
+particles_anim_v_frames = 1
+particles_anim_loop = false
+
+[sub_resource type="QuadMesh" id="QuadMesh_g2gsk"]
+material = SubResource("StandardMaterial3D_uwt0r")
+
+[node name="Projectile" type="Area3D"]
 collision_layer = 4
 collision_mask = 3
 script = ExtResource("1_10ck3")
 
 [node name="TTLTimer" type="Timer" parent="."]
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-scale = Vector2(5, 5)
-texture = ExtResource("2_6mqg4")
+[node name="CollisionShape2D" type="CollisionShape3D" parent="."]
+shape = SubResource("BoxShape3D_uwt0r")
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("RectangleShape2D_m4ep4")
+[node name="Sprite2D2" type="MeshInstance3D" parent="."]
+transform = Transform3D(4, 0, 0, 0, 4, 0, 0, 0, 4, 0, 0, 0)
+visible = false
+mesh = SubResource("QuadMesh_g2gsk")
 
 [connection signal="body_entered" from="." to="." method="_on_body_entered"]
 [connection signal="timeout" from="TTLTimer" to="." method="_on_ttl_timer_timeout"]

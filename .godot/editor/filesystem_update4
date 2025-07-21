@@ -1,0 +1,10 @@
+res://UI/MainMenu/menu.tscn
+res://Game/MainGame.tscn
+res://Game/Player/player.tscn
+res://Game/Player/lag_compensation_player.tscn
+res://Game/Projectile/lag_compensation_projectile.tscn
+res://Game/Projectile/projectile.tscn
+res://Game/HUD.tscn
+res://Game/Player/player.gd
+res://Game/Player/player_stats.gd
+res://Game/Player/player_input.gd

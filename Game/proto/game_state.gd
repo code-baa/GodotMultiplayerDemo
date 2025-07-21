@@ -134,7 +134,6 @@ enum PB_SERVICE_STATE {
 }
 
 class PBField:
-	@warning_ignore("untyped_declaration")
 	func _init(a_name : String, a_type : int, a_rule : int, a_tag : int, packed : bool, a_value = null):
 		name = a_name
 		type = a_type
@@ -148,7 +147,6 @@ class PBField:
 	var rule : int
 	var tag : int
 	var option_packed : bool
-	@warning_ignore("untyped_declaration")
 	var value
 	var is_map_field : bool = false
 	var option_default : bool = false
@@ -161,7 +159,6 @@ class PBTypeTag:
 
 class PBServiceField:
 	var field : PBField
-	@warning_ignore("untyped_declaration")
 	var func_ref = null
 	var state : int = PB_SERVICE_STATE.UNFILLED
 
@@ -178,7 +175,6 @@ class PBPacker:
 		else:
 			return (n >> 1)
 
-	@warning_ignore("untyped_declaration")
 	static func pack_varint(value) -> PackedByteArray:
 		var varint : PackedByteArray = PackedByteArray()
 		if typeof(value) == TYPE_BOOL:
@@ -194,11 +190,10 @@ class PBPacker:
 			else:
 				varint.append(b)
 				break
-		if varint.size() == 9 && varint[8] == 0xFF:
+		if varint.size() == 9 && (varint[8] & 0x80 != 0):
 			varint.append(0x01)
 		return varint
 
-	@warning_ignore("untyped_declaration")
 	static func pack_bytes(value, count : int, data_type : int) -> PackedByteArray:
 		var bytes : PackedByteArray = PackedByteArray()
 		if data_type == PB_DATA_TYPE.FLOAT:
@@ -215,47 +210,35 @@ class PBPacker:
 				value >>= 8
 		return bytes
 
-	@warning_ignore("untyped_declaration")
 	static func unpack_bytes(bytes : PackedByteArray, index : int, count : int, data_type : int):
-		var value = 0
 		if data_type == PB_DATA_TYPE.FLOAT:
-			var spb : StreamPeerBuffer = StreamPeerBuffer.new()
-			for i in range(index, count + index):
-				spb.put_u8(bytes[i])
-			spb.seek(0)
-			value = spb.get_float()
+			return bytes.decode_float(index)
 		elif data_type == PB_DATA_TYPE.DOUBLE:
-			var spb : StreamPeerBuffer = StreamPeerBuffer.new()
-			for i in range(index, count + index):
-				spb.put_u8(bytes[i])
-			spb.seek(0)
-			value = spb.get_double()
+			return bytes.decode_double(index)
 		else:
-			for i in range(index + count - 1, index - 1, -1):
-				value |= (bytes[i] & 0xFF)
-				if i != index:
-					value <<= 8
-		return value
+			# Convert to big endian
+			var slice: PackedByteArray = bytes.slice(index, index + count)
+			slice.reverse()
+			return slice
 
-	@warning_ignore("untyped_declaration")
 	static func unpack_varint(varint_bytes) -> int:
 		var value : int = 0
-		for i in range(varint_bytes.size() - 1, -1, -1):
-			value |= varint_bytes[i] & 0x7F
-			if i != 0:
-				value <<= 7
+		var i: int = varint_bytes.size() - 1
+		while i > -1:
+			value = (value << 7) | (varint_bytes[i] & 0x7F)
+			i -= 1
 		return value
 
 	static func pack_type_tag(type : int, tag : int) -> PackedByteArray:
 		return pack_varint((tag << 3) | type)
 
 	static func isolate_varint(bytes : PackedByteArray, index : int) -> PackedByteArray:
-		var result : PackedByteArray = PackedByteArray()
-		for i in range(index, bytes.size()):
-			result.append(bytes[i])
+		var i: int = index
+		while i <= index + 10: # Protobuf varint max size is 10 bytes
 			if !(bytes[i] & 0x80):
-				break
-		return result
+				return bytes.slice(index, i + 1)
+			i += 1
+		return [] # Unreachable
 
 	static func unpack_type_tag(bytes : PackedByteArray, index : int) -> PBTypeTag:
 		var varint_bytes : PackedByteArray = isolate_varint(bytes, index)
@@ -286,7 +269,6 @@ class PBPacker:
 		else:
 			return PB_TYPE.UNDEFINED
 
-	@warning_ignore("untyped_declaration")
 	static func pack_field(field : PBField) -> PackedByteArray:
 		var type : int = pb_type_from_data_type(field.type)
 		var type_copy : int = type
@@ -384,7 +366,19 @@ class PBPacker:
 		else:
 			return data
 
-	@warning_ignore("untyped_declaration")
+	static func skip_unknown_field(bytes : PackedByteArray, offset : int, type : int) -> int:
+		if type == PB_TYPE.VARINT:
+			return offset + isolate_varint(bytes, offset).size()
+		if type == PB_TYPE.FIX64:
+			return offset + 8
+		if type == PB_TYPE.LENGTHDEL:
+			var length_bytes : PackedByteArray = isolate_varint(bytes, offset)
+			var length : int = unpack_varint(length_bytes)
+			return offset + length_bytes.size() + length
+		if type == PB_TYPE.FIX32:
+			return offset + 4
+		return PB_ERR.UNDEFINED_STATE
+
 	static func unpack_field(bytes : PackedByteArray, offset : int, field : PBField, type : int, message_func_ref) -> int:
 		if field.rule == PB_RULE.REPEATED && type != PB_TYPE.LENGTHDEL && field.option_packed:
 			var count = isolate_varint(bytes, offset)
@@ -485,18 +479,14 @@ class PBPacker:
 							else:
 								return offset
 						elif field.type == PB_DATA_TYPE.STRING:
-							var str_bytes : PackedByteArray = PackedByteArray()
-							for i in range(offset, inner_size + offset):
-								str_bytes.append(bytes[i])
+							var str_bytes : PackedByteArray = bytes.slice(offset, inner_size + offset)
 							if field.rule == PB_RULE.REPEATED:
 								field.value.append(str_bytes.get_string_from_utf8())
 							else:
 								field.value = str_bytes.get_string_from_utf8()
 							return offset + inner_size
 						elif field.type == PB_DATA_TYPE.BYTES:
-							var val_bytes : PackedByteArray = PackedByteArray()
-							for i in range(offset, inner_size + offset):
-								val_bytes.append(bytes[i])
+							var val_bytes : PackedByteArray = bytes.slice(offset, inner_size + offset)
 							if field.rule == PB_RULE.REPEATED:
 								field.value.append(val_bytes)
 							else:
@@ -508,7 +498,6 @@ class PBPacker:
 					return PB_ERR.LENGTHDEL_SIZE_NOT_FOUND
 		return PB_ERR.UNDEFINED_STATE
 
-	@warning_ignore("untyped_declaration")
 	static func unpack_message(data, bytes : PackedByteArray, offset : int, limit : int) -> int:
 		while true:
 			var tt : PBTypeTag = unpack_type_tag(bytes, offset)
@@ -530,11 +519,22 @@ class PBPacker:
 							return res
 						else:
 							break
+				else:
+					var res : int = skip_unknown_field(bytes, offset, tt.type)
+					if res > 0:
+						offset = res
+						if offset == limit:
+							return offset
+						elif offset > limit:
+							return PB_ERR.PACKAGE_SIZE_MISMATCH
+					elif res < 0:
+						return res
+					else:
+						break							
 			else:
 				return offset
 		return PB_ERR.UNDEFINED_STATE
 
-	@warning_ignore("untyped_declaration")
 	static func pack_message(data) -> PackedByteArray:
 		var DEFAULT_VALUES
 		if PROTO_VERSION == 2:
@@ -559,7 +559,6 @@ class PBPacker:
 				return PackedByteArray()
 		return result
 
-	@warning_ignore("untyped_declaration")
 	static func check_required(data) -> bool:
 		var keys : Array = data.keys()
 		for i in keys:
@@ -567,7 +566,6 @@ class PBPacker:
 				return false
 		return true
 
-	@warning_ignore("untyped_declaration")
 	static func construct_map(key_values):
 		var result = {}
 		for kv in key_values:
@@ -580,7 +578,6 @@ class PBPacker:
 			tab += DEBUG_TAB
 		return tab + text
 	
-	@warning_ignore("untyped_declaration")
 	static func value_to_string(value, field : PBField, nesting : int) -> String:
 		var result : String = ""
 		var text : String
@@ -610,7 +607,6 @@ class PBPacker:
 			result += str(value)
 		return result
 	
-	@warning_ignore("untyped_declaration")
 	static func field_to_string(field : PBField, nesting : int) -> String:
 		var result : String = tabulate(field.name + ": ", nesting)
 		if field.type == PB_DATA_TYPE.MAP:
@@ -648,7 +644,6 @@ class PBPacker:
 		result += ";\n"
 		return result
 		
-	@warning_ignore("untyped_declaration")
 	static func message_to_string(data, nesting : int = 0) -> String:
 		var DEFAULT_VALUES
 		if PROTO_VERSION == 2:
@@ -678,7 +673,6 @@ class PBPacker:
 
 
 class GameState:
-	@warning_ignore("untyped_declaration")
 	func _init():
 		var service
 		
@@ -701,10 +695,13 @@ class GameState:
 		service.func_ref = Callable(self, "add_projectiles")
 		data[__projectiles.tag] = service
 		
-	@warning_ignore("untyped_declaration")
 	var data = {}
 	
 	var __tick: PBField
+	func has_tick() -> bool:
+		if __tick.value != null:
+			return true
+		return false
 	func get_tick() -> int:
 		return __tick.value
 	func clear_tick() -> void:
@@ -718,9 +715,9 @@ class GameState:
 		return __players.value
 	func clear_players() -> void:
 		data[1].state = PB_SERVICE_STATE.UNFILLED
-		__players.value = []
+		__players.value.clear()
 	func add_players() -> GameState.PlayerProto:
-		var element := GameState.PlayerProto.new()
+		var element = GameState.PlayerProto.new()
 		__players.value.append(element)
 		return element
 	
@@ -729,15 +726,13 @@ class GameState:
 		return __projectiles.value
 	func clear_projectiles() -> void:
 		data[2].state = PB_SERVICE_STATE.UNFILLED
-		__projectiles.value = []
-	
+		__projectiles.value.clear()
 	func add_projectiles() -> GameState.ProjectileProto:
-		var element := GameState.ProjectileProto.new()
+		var element = GameState.ProjectileProto.new()
 		__projectiles.value.append(element)
 		return element
 	
 	class PlayerProto:
-		@warning_ignore("untyped_declaration")
 		func _init():
 			var service
 			
@@ -756,24 +751,33 @@ class GameState:
 			service.field = __position_y
 			data[__position_y.tag] = service
 			
-			__state = PBField.new("state", PB_DATA_TYPE.ENUM, PB_RULE.OPTIONAL, 3, true, DEFAULT_VALUES_3[PB_DATA_TYPE.ENUM])
+			__position_z = PBField.new("position_z", PB_DATA_TYPE.FLOAT, PB_RULE.OPTIONAL, 3, true, DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT])
+			service = PBServiceField.new()
+			service.field = __position_z
+			data[__position_z.tag] = service
+			
+			__state = PBField.new("state", PB_DATA_TYPE.ENUM, PB_RULE.OPTIONAL, 4, true, DEFAULT_VALUES_3[PB_DATA_TYPE.ENUM])
 			service = PBServiceField.new()
 			service.field = __state
 			data[__state.tag] = service
 			
-			__health = PBField.new("health", PB_DATA_TYPE.INT32, PB_RULE.OPTIONAL, 4, true, DEFAULT_VALUES_3[PB_DATA_TYPE.INT32])
+			__health = PBField.new("health", PB_DATA_TYPE.INT32, PB_RULE.OPTIONAL, 5, true, DEFAULT_VALUES_3[PB_DATA_TYPE.INT32])
 			service = PBServiceField.new()
 			service.field = __health
 			data[__health.tag] = service
 			
-			__username = PBField.new("username", PB_DATA_TYPE.STRING, PB_RULE.OPTIONAL, 5, true, DEFAULT_VALUES_3[PB_DATA_TYPE.STRING])
+			__username = PBField.new("username", PB_DATA_TYPE.STRING, PB_RULE.OPTIONAL, 6, true, DEFAULT_VALUES_3[PB_DATA_TYPE.STRING])
 			service = PBServiceField.new()
 			service.field = __username
 			data[__username.tag] = service
 			
-		var data := {}
+		var data = {}
 		
 		var __id: PBField
+		func has_id() -> bool:
+			if __id.value != null:
+				return true
+			return false
 		func get_id() -> int:
 			return __id.value
 		func clear_id() -> void:
@@ -783,6 +787,10 @@ class GameState:
 			__id.value = value
 		
 		var __position_x: PBField
+		func has_position_x() -> bool:
+			if __position_x.value != null:
+				return true
+			return false
 		func get_position_x() -> float:
 			return __position_x.value
 		func clear_position_x() -> void:
@@ -792,6 +800,10 @@ class GameState:
 			__position_x.value = value
 		
 		var __position_y: PBField
+		func has_position_y() -> bool:
+			if __position_y.value != null:
+				return true
+			return false
 		func get_position_y() -> float:
 			return __position_y.value
 		func clear_position_y() -> void:
@@ -800,31 +812,54 @@ class GameState:
 		func set_position_y(value : float) -> void:
 			__position_y.value = value
 		
+		var __position_z: PBField
+		func has_position_z() -> bool:
+			if __position_z.value != null:
+				return true
+			return false
+		func get_position_z() -> float:
+			return __position_z.value
+		func clear_position_z() -> void:
+			data[3].state = PB_SERVICE_STATE.UNFILLED
+			__position_z.value = DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT]
+		func set_position_z(value : float) -> void:
+			__position_z.value = value
+		
 		var __state: PBField
-		@warning_ignore("untyped_declaration")
+		func has_state() -> bool:
+			if __state.value != null:
+				return true
+			return false
 		func get_state():
 			return __state.value
 		func clear_state() -> void:
-			data[3].state = PB_SERVICE_STATE.UNFILLED
+			data[4].state = PB_SERVICE_STATE.UNFILLED
 			__state.value = DEFAULT_VALUES_3[PB_DATA_TYPE.ENUM]
-		@warning_ignore("untyped_declaration")
 		func set_state(value) -> void:
 			__state.value = value
 		
 		var __health: PBField
+		func has_health() -> bool:
+			if __health.value != null:
+				return true
+			return false
 		func get_health() -> int:
 			return __health.value
 		func clear_health() -> void:
-			data[4].state = PB_SERVICE_STATE.UNFILLED
+			data[5].state = PB_SERVICE_STATE.UNFILLED
 			__health.value = DEFAULT_VALUES_3[PB_DATA_TYPE.INT32]
 		func set_health(value : int) -> void:
 			__health.value = value
 		
 		var __username: PBField
+		func has_username() -> bool:
+			if __username.value != null:
+				return true
+			return false
 		func get_username() -> String:
 			return __username.value
 		func clear_username() -> void:
-			data[5].state = PB_SERVICE_STATE.UNFILLED
+			data[6].state = PB_SERVICE_STATE.UNFILLED
 			__username.value = DEFAULT_VALUES_3[PB_DATA_TYPE.STRING]
 		func set_username(value : String) -> void:
 			__username.value = value
@@ -845,7 +880,6 @@ class GameState:
 		func to_bytes() -> PackedByteArray:
 			return PBPacker.pack_message(data)
 			
-		@warning_ignore("untyped_declaration")
 		func from_bytes(bytes : PackedByteArray, offset : int = 0, limit : int = -1) -> int:
 			var cur_limit = bytes.size()
 			if limit != -1:
@@ -862,7 +896,6 @@ class GameState:
 			return result
 		
 	class ProjectileProto:
-		@warning_ignore("untyped_declaration")
 		func _init():
 			var service
 			
@@ -886,24 +919,38 @@ class GameState:
 			service.field = __position_y
 			data[__position_y.tag] = service
 			
-			__velocity_x = PBField.new("velocity_x", PB_DATA_TYPE.FLOAT, PB_RULE.OPTIONAL, 4, true, DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT])
+			__position_z = PBField.new("position_z", PB_DATA_TYPE.FLOAT, PB_RULE.OPTIONAL, 4, true, DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT])
+			service = PBServiceField.new()
+			service.field = __position_z
+			data[__position_z.tag] = service
+			
+			__velocity_x = PBField.new("velocity_x", PB_DATA_TYPE.FLOAT, PB_RULE.OPTIONAL, 5, true, DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT])
 			service = PBServiceField.new()
 			service.field = __velocity_x
 			data[__velocity_x.tag] = service
 			
-			__velocity_y = PBField.new("velocity_y", PB_DATA_TYPE.FLOAT, PB_RULE.OPTIONAL, 5, true, DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT])
+			__velocity_y = PBField.new("velocity_y", PB_DATA_TYPE.FLOAT, PB_RULE.OPTIONAL, 6, true, DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT])
 			service = PBServiceField.new()
 			service.field = __velocity_y
 			data[__velocity_y.tag] = service
 			
-			__damage = PBField.new("damage", PB_DATA_TYPE.INT32, PB_RULE.OPTIONAL, 6, true, DEFAULT_VALUES_3[PB_DATA_TYPE.INT32])
+			__velocity_z = PBField.new("velocity_z", PB_DATA_TYPE.FLOAT, PB_RULE.OPTIONAL, 7, true, DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT])
+			service = PBServiceField.new()
+			service.field = __velocity_z
+			data[__velocity_z.tag] = service
+			
+			__damage = PBField.new("damage", PB_DATA_TYPE.INT32, PB_RULE.OPTIONAL, 8, true, DEFAULT_VALUES_3[PB_DATA_TYPE.INT32])
 			service = PBServiceField.new()
 			service.field = __damage
 			data[__damage.tag] = service
 			
-		var data := {}
+		var data = {}
 		
 		var __id: PBField
+		func has_id() -> bool:
+			if __id.value != null:
+				return true
+			return false
 		func get_id() -> int:
 			return __id.value
 		func clear_id() -> void:
@@ -913,6 +960,10 @@ class GameState:
 			__id.value = value
 		
 		var __owner_id: PBField
+		func has_owner_id() -> bool:
+			if __owner_id.value != null:
+				return true
+			return false
 		func get_owner_id() -> int:
 			return __owner_id.value
 		func clear_owner_id() -> void:
@@ -922,6 +973,10 @@ class GameState:
 			__owner_id.value = value
 		
 		var __position_x: PBField
+		func has_position_x() -> bool:
+			if __position_x.value != null:
+				return true
+			return false
 		func get_position_x() -> float:
 			return __position_x.value
 		func clear_position_x() -> void:
@@ -931,6 +986,10 @@ class GameState:
 			__position_x.value = value
 		
 		var __position_y: PBField
+		func has_position_y() -> bool:
+			if __position_y.value != null:
+				return true
+			return false
 		func get_position_y() -> float:
 			return __position_y.value
 		func clear_position_y() -> void:
@@ -939,29 +998,67 @@ class GameState:
 		func set_position_y(value : float) -> void:
 			__position_y.value = value
 		
+		var __position_z: PBField
+		func has_position_z() -> bool:
+			if __position_z.value != null:
+				return true
+			return false
+		func get_position_z() -> float:
+			return __position_z.value
+		func clear_position_z() -> void:
+			data[4].state = PB_SERVICE_STATE.UNFILLED
+			__position_z.value = DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT]
+		func set_position_z(value : float) -> void:
+			__position_z.value = value
+		
 		var __velocity_x: PBField
+		func has_velocity_x() -> bool:
+			if __velocity_x.value != null:
+				return true
+			return false
 		func get_velocity_x() -> float:
 			return __velocity_x.value
 		func clear_velocity_x() -> void:
-			data[4].state = PB_SERVICE_STATE.UNFILLED
+			data[5].state = PB_SERVICE_STATE.UNFILLED
 			__velocity_x.value = DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT]
 		func set_velocity_x(value : float) -> void:
 			__velocity_x.value = value
 		
 		var __velocity_y: PBField
+		func has_velocity_y() -> bool:
+			if __velocity_y.value != null:
+				return true
+			return false
 		func get_velocity_y() -> float:
 			return __velocity_y.value
 		func clear_velocity_y() -> void:
-			data[5].state = PB_SERVICE_STATE.UNFILLED
+			data[6].state = PB_SERVICE_STATE.UNFILLED
 			__velocity_y.value = DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT]
 		func set_velocity_y(value : float) -> void:
 			__velocity_y.value = value
 		
+		var __velocity_z: PBField
+		func has_velocity_z() -> bool:
+			if __velocity_z.value != null:
+				return true
+			return false
+		func get_velocity_z() -> float:
+			return __velocity_z.value
+		func clear_velocity_z() -> void:
+			data[7].state = PB_SERVICE_STATE.UNFILLED
+			__velocity_z.value = DEFAULT_VALUES_3[PB_DATA_TYPE.FLOAT]
+		func set_velocity_z(value : float) -> void:
+			__velocity_z.value = value
+		
 		var __damage: PBField
+		func has_damage() -> bool:
+			if __damage.value != null:
+				return true
+			return false
 		func get_damage() -> int:
 			return __damage.value
 		func clear_damage() -> void:
-			data[6].state = PB_SERVICE_STATE.UNFILLED
+			data[8].state = PB_SERVICE_STATE.UNFILLED
 			__damage.value = DEFAULT_VALUES_3[PB_DATA_TYPE.INT32]
 		func set_damage(value : int) -> void:
 			__damage.value = value
@@ -972,7 +1069,6 @@ class GameState:
 		func to_bytes() -> PackedByteArray:
 			return PBPacker.pack_message(data)
 			
-		@warning_ignore("untyped_declaration")
 		func from_bytes(bytes : PackedByteArray, offset : int = 0, limit : int = -1) -> int:
 			var cur_limit = bytes.size()
 			if limit != -1:
@@ -994,7 +1090,6 @@ class GameState:
 	func to_bytes() -> PackedByteArray:
 		return PBPacker.pack_message(data)
 		
-	@warning_ignore("untyped_declaration")
 	func from_bytes(bytes : PackedByteArray, offset : int = 0, limit : int = -1) -> int:
 		var cur_limit = bytes.size()
 		if limit != -1:

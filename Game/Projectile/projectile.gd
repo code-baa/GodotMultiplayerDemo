@@ -1,4 +1,4 @@
-extends Area2D
+extends Area3D
 
 class_name Projectile
 
@@ -7,7 +7,7 @@ class_name Projectile
 ##################################################################################################
 # Shared variables
 ##################################################################################################
-var velocity := Vector2(0,0)
+var velocity := Vector3(0,0,0)
 var damage := 25
 var time_to_live := 3.0
 var owner_id := 1
@@ -34,7 +34,7 @@ func _physics_process(delta: float) -> void:
 	position = apply_physics(delta)
 	previous_positions[Clock.tick] = position
 
-func apply_physics(delta: float) -> Vector2:
+func apply_physics(delta: float) -> Vector3:
 	return position + (delta * velocity)
 
 func _on_ttl_timer_timeout() -> void:

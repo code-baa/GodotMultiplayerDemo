@@ -1,54 +1,49 @@
-[gd_scene load_steps=6 format=3 uid="uid://cxqjgrh6gip40"]
+[gd_scene load_steps=9 format=3 uid="uid://cxqjgrh6gip40"]
 
-[ext_resource type="Script" path="res://Game/MainGame.gd" id="1_slolc"]
+[ext_resource type="Script" uid="uid://cli2rjjxpvayg" path="res://Game/MainGame.gd" id="1_slolc"]
 [ext_resource type="PackedScene" uid="uid://bexqieh0f6pi4" path="res://Game/HUD.tscn" id="2_c3r4b"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_1hk7l"]
-size = Vector2(1000, 20)
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_yws65"]
+sky_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
+ground_horizon_color = Color(0.662243, 0.671743, 0.686743, 1)
 
-[sub_resource type="Gradient" id="Gradient_vsny1"]
-offsets = PackedFloat32Array(0.415663, 0.993976, 1)
-colors = PackedColorArray(0.759036, 0.759036, 0.759036, 1, 0, 0, 0, 1, 1, 1, 1, 1)
+[sub_resource type="Sky" id="Sky_xvp8g"]
+sky_material = SubResource("ProceduralSkyMaterial_yws65")
 
-[sub_resource type="GradientTexture2D" id="GradientTexture2D_o3q3o"]
-gradient = SubResource("Gradient_vsny1")
-width = 1000
-height = 20
-fill_from = Vector2(1, 0)
+[sub_resource type="Environment" id="Environment_qfkit"]
+background_mode = 2
+sky = SubResource("Sky_xvp8g")
+tonemap_mode = 2
+glow_enabled = true
 
-[node name="MainGame" type="Node2D"]
+[sub_resource type="BoxShape3D" id="BoxShape3D_yws65"]
+size = Vector3(100, 1, 100)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_yws65"]
+
+[sub_resource type="BoxMesh" id="BoxMesh_xvp8g"]
+material = SubResource("StandardMaterial3D_yws65")
+size = Vector3(100, 1, 100)
+
+[node name="MainGame" type="Node3D"]
 script = ExtResource("1_slolc")
 
-[node name="StaticBody2D" type="StaticBody2D" parent="."]
+[node name="DirectionalLight3D" type="DirectionalLight3D" parent="."]
+transform = Transform3D(-0.866023, -0.433016, 0.250001, 0, 0.499998, 0.866027, -0.500003, 0.749999, -0.43301, 0, 0, 0)
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_qfkit")
+
+[node name="StaticBody2D" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -1, 0)
 collision_layer = 2
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D"]
-shape = SubResource("RectangleShape2D_1hk7l")
+[node name="CollisionShape2D" type="CollisionShape3D" parent="StaticBody2D"]
+shape = SubResource("BoxShape3D_yws65")
 
-[node name="Sprite2D" type="Sprite2D" parent="StaticBody2D/CollisionShape2D"]
-texture = SubResource("GradientTexture2D_o3q3o")
-
-[node name="StaticBody2D" type="StaticBody2D" parent="StaticBody2D"]
-position = Vector2(-300, -150)
-scale = Vector2(0.2, 1)
-collision_layer = 2
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D/StaticBody2D"]
-shape = SubResource("RectangleShape2D_1hk7l")
-
-[node name="Sprite2D" type="Sprite2D" parent="StaticBody2D/StaticBody2D/CollisionShape2D"]
-texture = SubResource("GradientTexture2D_o3q3o")
-
-[node name="StaticBody2D2" type="StaticBody2D" parent="StaticBody2D"]
-position = Vector2(300, -150)
-scale = Vector2(0.2, 1)
-collision_layer = 2
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D/StaticBody2D2"]
-shape = SubResource("RectangleShape2D_1hk7l")
-
-[node name="Sprite2D" type="Sprite2D" parent="StaticBody2D/StaticBody2D2/CollisionShape2D"]
-texture = SubResource("GradientTexture2D_o3q3o")
+[node name="mesh" type="MeshInstance3D" parent="StaticBody2D/CollisionShape2D"]
+mesh = SubResource("BoxMesh_xvp8g")
 
 [node name="CanvasLayer" type="CanvasLayer" parent="."]
 

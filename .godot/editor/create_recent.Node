@@ -1,0 +1,10 @@
+WorldEnvironment
+MeshInstance3D
+CollisionShape3D
+StaticBody3D
+Node3D
+Area3D
+Camera3D
+RayCast3D
+MeshInstance2D
+CharacterBody3D

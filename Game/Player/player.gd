@@ -1,6 +1,8 @@
-extends CharacterBody2D
+extends CharacterBody3D
 
 class_name Player
+
+@onready var camera_3d: Camera3D = $Camera3D
 
 const enums = preload("res://Game/enums.gd")
 const PlayerStats = preload("res://Game/Player/player_stats.gd")
@@ -10,8 +12,8 @@ const DeadTexture = preload("res://Textures/hit_playerpng.png")
 const LiveTexture = preload("res://Textures/player_face.png")
 const PlayerInput = preload("res://Game/Player/player_input.gd")
 
-@onready var collision_shape_2d := $CollisionShape2D
-@onready var sprite_2d := $Sprite2D
+@onready var collision_shape_3d := $CollisionShape3D
+@onready var _mesh := $mesh
 @onready var respawn_timer := $RespawnTimer
 
 ##################################################################################################
@@ -24,9 +26,9 @@ const jump_buffer_time := 0.1
 const coyote_jump_time := 0.1
 const clock_sync_delay := 3.0
 const respawn_time := 2.0
-const spawn_position_y := -600
-const spawn_position_x_min := -200
-const spawn_position_x_max := 200
+const spawn_position_y := 5
+const spawn_position_x_min := -5
+const spawn_position_x_max := 5
 
 ##################################################################################################
 # State sets
@@ -38,7 +40,7 @@ const is_in_air_states := [enums.states.JUMPING, enums.states.FALLING, enums.sta
 # Shared variables
 ##################################################################################################
 # renders the state of the player as a label if true
-var debug := false
+var debug := true
 var id: int
 #TODO: optimize if needed
 var input_dict := {}
@@ -79,16 +81,21 @@ var previous_positions := {}
 ##################################################################################################
 # Client functions
 ##################################################################################################
-func process_client_inputs(tick: int) -> void:
+func process_client_inputs(tick: int) -> void: # captures real-time inputs and stores them per server tick
 	var input := PlayerInput.new()
-	if not Input.is_action_pressed("right") and not Input.is_action_pressed("left"):
+	if not Input.is_action_pressed("forward") and not Input.is_action_pressed("backward") and not Input.is_action_pressed("left") and not Input.is_action_pressed("right"):
 		input.movement = enums.movement_input.NONE
-	elif Input.is_action_pressed("right") and Input.is_action_pressed("left"):
+	elif ((Input.is_action_pressed("forward") and Input.is_action_pressed("backward"))) or (Input.is_action_pressed("right") and Input.is_action_pressed("left")):
 		input.movement = enums.movement_input.NONE
+	elif Input.is_action_pressed("forward"):
+		input.movement = enums.movement_input.MOVE_FORWARD
+	elif Input.is_action_pressed("backward"):
+		input.movement = enums.movement_input.MOVE_BACKWARD
 	elif Input.is_action_pressed("right"):
 		input.movement = enums.movement_input.MOVE_RIGHT
 	elif Input.is_action_pressed("left"):
 		input.movement = enums.movement_input.MOVE_LEFT
+
 		
 	if Input.is_action_pressed("jump"):
 		input.jump = true
@@ -111,19 +118,19 @@ func process_client_inputs(tick: int) -> void:
 			i.set_jump(input_dict[key].jump)
 		MultiplayerManager.recieve_player_input.rpc_id(1, input_proto.to_bytes())
 	
-func prune_old_inputs(server_tick: int) -> void:
+func prune_old_inputs(server_tick: int) -> void: # removes inputs and reconciliation data older than the servers current tick
 	#TODO: optimize if needed
 	for tick: int in input_dict.keys():
 		if tick < server_tick:
 			input_dict.erase(tick)
 			previous_inputs_and_positions.erase(tick)
 
-func reapply_inputs(server_tick: int, delta: float) -> void:
+func reapply_inputs(server_tick: int, delta: float) -> void: # used for client-side prediction. 
 	var client_tick := Clock.tick
 	var t := server_tick
 	while t < client_tick:
-		apply_inputs(t)
-		apply_physics(delta)
+		apply_inputs(t) # applies stores inputs/movement from a specific server stick
+		apply_physics(delta) 
 		var p: Dictionary = previous_inputs_and_positions.get(t)
 		if p == null:
 			p = {}
@@ -134,7 +141,7 @@ func reapply_inputs(server_tick: int, delta: float) -> void:
 ##################################################################################################
 # Server functions
 ##################################################################################################
-func update_input_dict(input_proto: PackedByteArray, _server_tick: int) -> void:
+func update_input_dict(input_proto: PackedByteArray, _server_tick: int) -> void: # called on host when it receives inputs from client
 	var i := PlayerInputProto.InputDictProto.new()
 	var result := i.from_bytes(input_proto)
 	if result != PlayerInputProto.PB_ERR.NO_ERRORS:
@@ -156,7 +163,7 @@ func update_input_dict(input_proto: PackedByteArray, _server_tick: int) -> void:
 			if tick < Clock.tick:
 				input_dict.erase(tick)
 
-func prune_previous_positions() -> void:
+func prune_previous_positions() -> void: # ensures the rollback buffer 
 	if previous_positions.size() > server_max_position_size:
 		var min_key: int = previous_positions.keys().min()
 		var i := 0
@@ -171,12 +178,12 @@ func _ready() -> void:
 	if MultiplayerManager.is_host:
 		respawn()
 	if this_player:
-		var camera := Camera2D.new()
-		add_child(camera)
-		camera.make_current()
-		camera.position_smoothing_enabled = true
-		camera.position_smoothing_speed = 5
-		camera.limit_bottom = 250
+	#	var camera := Camera3D.new()
+	#	add_child(camera)
+		camera_3d.make_current()
+		#camera.position_smoothing_enabled = true
+		#camera.position_smoothing_speed = 5
+		#camera.limit_bottom = 250
 		health = stats.max_health
 
 func set_id(id_: int) -> void:
@@ -187,11 +194,11 @@ func set_username(username_: String) -> void:
 		username = username_
 		$Name.text = username_
 
-func get_random_spawn_point() -> Vector2:
-	return Vector2(randi_range(spawn_position_x_min, spawn_position_x_max), spawn_position_y)
+func get_random_spawn_point() -> Vector3:
+	return Vector3(randi_range(spawn_position_x_min, spawn_position_x_max), spawn_position_y, randi_range(spawn_position_x_min, spawn_position_x_max))
 
 func _physics_process(delta: float) -> void:
-	update_sprite()
+	update_material()
 	if debug:
 		$DebugStatus.text = enums.states.keys()[state]
 	if !this_player and !MultiplayerManager.is_host:
@@ -223,7 +230,7 @@ func apply_physics(delta: float) -> void:
 	if state == enums.states.DEAD:
 		return
 	if not is_on_floor():
-		velocity.y += get_gravity() * delta
+		velocity.y -= _get_gravity() * delta
 		if velocity.y > stats.terminal_velocity:
 			velocity.y = stats.terminal_velocity
 		if state != enums.states.JUMPING and state != enums.states.LANDING:
@@ -236,11 +243,12 @@ func apply_physics(delta: float) -> void:
 	
 	if state == enums.states.FALLING and $FloorDetector.is_colliding():
 		state = enums.states.LANDING
-	if velocity.x == 0 and is_on_floor():
+	if ((velocity.z + velocity.x) == 0) and is_on_floor():
 		state = enums.states.IDLE
-	if is_on_floor() and velocity.x != 0:
+	if is_on_floor() and ((velocity.z != 0) or (velocity.x != 0)):
 		state = enums.states.MOVE
 	move_and_slide()
+	
 	
 func apply_inputs(tick: int) -> PlayerInput:
 	var i: PlayerInput = input_dict.get(tick)
@@ -249,9 +257,20 @@ func apply_inputs(tick: int) -> PlayerInput:
 	match i.movement:
 		enums.movement_input.NONE:
 			velocity.x = 0
+			velocity.z = 0
+			
+		enums.movement_input.MOVE_FORWARD:
+			velocity.z = -stats.speed
+			direction = enums.directions.FORWARD
+			
+		enums.movement_input.MOVE_BACKWARD:
+			velocity.z = stats.speed
+			direction = enums.directions.BACKWARD
+			
 		enums.movement_input.MOVE_RIGHT:
 			velocity.x = stats.speed
 			direction = enums.directions.RIGHT
+			
 		enums.movement_input.MOVE_LEFT:
 			velocity.x = -stats.speed
 			direction = enums.directions.LEFT
@@ -264,11 +283,15 @@ func apply_inputs(tick: int) -> PlayerInput:
 		
 	return i
 		
-func update_sprite() -> void:
+		
+func update_material() -> void:
 	if state == enums.states.DEAD:
-		sprite_2d.texture = DeadTexture
+		var mat = _mesh.get_active_material(0)
+		mat.albedo_color = Color(1.0, 0.0, 0.0)
 		return
-	sprite_2d.texture = LiveTexture
+	var mat = _mesh.get_active_material(0)
+	mat.albedo_color = Color(0.0, 0.0, 0.0)
+
 
 func jump() -> void:
 	if state == enums.states.DEAD:
@@ -283,10 +306,12 @@ func jump() -> void:
 	else:
 		$JumpBufferTimer.start(jump_buffer_time)
 
+
 func _jump() -> void:
-	velocity.y = -stats.jump_speed
+	velocity.y = +stats.jump_speed
 	state = enums.states.JUMPING
 	$JumpTimer.start(stats.jump_time)
+
 
 func attack() -> void:
 	if state == enums.states.DEAD:
@@ -311,11 +336,13 @@ func attack() -> void:
 	if MultiplayerManager.is_host:
 		MultiplayerManager.add_projectile(new_projectile)
 
-func get_gravity() -> int:
+
+func _get_gravity() -> int:
 	if state == enums.states.FALLING:
 		return stats.fall_gravity
 	else:
 		return stats.jump_gravity
+		
 		
 func _on_jump_timer_timeout() -> void:
 	if state == enums.states.DEAD:
@@ -325,26 +352,32 @@ func _on_jump_timer_timeout() -> void:
 	else:
 		state = enums.states.FALLING
 
+
 func fell_off() -> void:
 	die()
+	
 	
 func die() -> void:
 	state = enums.states.DEAD
 	respawn_timer.start(respawn_time)
 	
+	
 func respawn() -> void:
-	velocity = Vector2.ZERO
+	velocity = Vector3.ZERO
 	state = enums.states.IDLE
 	health = stats.max_health
 	if MultiplayerManager.is_host:
 		MultiplayerManager.hard_reset_position(id, get_random_spawn_point())
 
+
 func can_jump() -> bool:
 	return can_jump_states.has(state)
+
 
 func take_damage(amount: int) -> void:
 	if MultiplayerManager.is_host:
 		health = health - amount
+
 
 func _on_respawn_timer_timeout() -> void:
 	respawn()

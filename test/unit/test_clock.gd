@@ -22,4 +22,3 @@ func test_calc_offset_clientBehind() -> void:
 	# client clock too fast
 	# client_tick - server_tick - latency = 25 - 1 - 3 <50 ms> = 26 (-17 to get to ideal of 9)
 	assert_eq(clock.calc_offset(200, 100, 1, 30, ideal_client_tick_buffer, min_client_server_tick_diff, max_client_server_tick_diff), -17)
-

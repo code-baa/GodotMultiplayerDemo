@@ -134,7 +134,6 @@ enum PB_SERVICE_STATE {
 }
 
 class PBField:
-	@warning_ignore("untyped_declaration")
 	func _init(a_name : String, a_type : int, a_rule : int, a_tag : int, packed : bool, a_value = null):
 		name = a_name
 		type = a_type
@@ -148,7 +147,6 @@ class PBField:
 	var rule : int
 	var tag : int
 	var option_packed : bool
-	@warning_ignore("untyped_declaration")
 	var value
 	var is_map_field : bool = false
 	var option_default : bool = false
@@ -161,7 +159,6 @@ class PBTypeTag:
 
 class PBServiceField:
 	var field : PBField
-	@warning_ignore("untyped_declaration")
 	var func_ref = null
 	var state : int = PB_SERVICE_STATE.UNFILLED
 
@@ -178,7 +175,6 @@ class PBPacker:
 		else:
 			return (n >> 1)
 
-	@warning_ignore("untyped_declaration")
 	static func pack_varint(value) -> PackedByteArray:
 		var varint : PackedByteArray = PackedByteArray()
 		if typeof(value) == TYPE_BOOL:
@@ -194,11 +190,10 @@ class PBPacker:
 			else:
 				varint.append(b)
 				break
-		if varint.size() == 9 && varint[8] == 0xFF:
+		if varint.size() == 9 && (varint[8] & 0x80 != 0):
 			varint.append(0x01)
 		return varint
 
-	@warning_ignore("untyped_declaration")
 	static func pack_bytes(value, count : int, data_type : int) -> PackedByteArray:
 		var bytes : PackedByteArray = PackedByteArray()
 		if data_type == PB_DATA_TYPE.FLOAT:
@@ -215,47 +210,35 @@ class PBPacker:
 				value >>= 8
 		return bytes
 
-	@warning_ignore("untyped_declaration")
 	static func unpack_bytes(bytes : PackedByteArray, index : int, count : int, data_type : int):
-		var value = 0
 		if data_type == PB_DATA_TYPE.FLOAT:
-			var spb : StreamPeerBuffer = StreamPeerBuffer.new()
-			for i in range(index, count + index):
-				spb.put_u8(bytes[i])
-			spb.seek(0)
-			value = spb.get_float()
+			return bytes.decode_float(index)
 		elif data_type == PB_DATA_TYPE.DOUBLE:
-			var spb : StreamPeerBuffer = StreamPeerBuffer.new()
-			for i in range(index, count + index):
-				spb.put_u8(bytes[i])
-			spb.seek(0)
-			value = spb.get_double()
+			return bytes.decode_double(index)
 		else:
-			for i in range(index + count - 1, index - 1, -1):
-				value |= (bytes[i] & 0xFF)
-				if i != index:
-					value <<= 8
-		return value
+			# Convert to big endian
+			var slice: PackedByteArray = bytes.slice(index, index + count)
+			slice.reverse()
+			return slice
 
-	@warning_ignore("untyped_declaration")
 	static func unpack_varint(varint_bytes) -> int:
 		var value : int = 0
-		for i in range(varint_bytes.size() - 1, -1, -1):
-			value |= varint_bytes[i] & 0x7F
-			if i != 0:
-				value <<= 7
+		var i: int = varint_bytes.size() - 1
+		while i > -1:
+			value = (value << 7) | (varint_bytes[i] & 0x7F)
+			i -= 1
 		return value
 
 	static func pack_type_tag(type : int, tag : int) -> PackedByteArray:
 		return pack_varint((tag << 3) | type)
 
 	static func isolate_varint(bytes : PackedByteArray, index : int) -> PackedByteArray:
-		var result : PackedByteArray = PackedByteArray()
-		for i in range(index, bytes.size()):
-			result.append(bytes[i])
+		var i: int = index
+		while i <= index + 10: # Protobuf varint max size is 10 bytes
 			if !(bytes[i] & 0x80):
-				break
-		return result
+				return bytes.slice(index, i + 1)
+			i += 1
+		return [] # Unreachable
 
 	static func unpack_type_tag(bytes : PackedByteArray, index : int) -> PBTypeTag:
 		var varint_bytes : PackedByteArray = isolate_varint(bytes, index)
@@ -286,7 +269,6 @@ class PBPacker:
 		else:
 			return PB_TYPE.UNDEFINED
 
-	@warning_ignore("untyped_declaration")
 	static func pack_field(field : PBField) -> PackedByteArray:
 		var type : int = pb_type_from_data_type(field.type)
 		var type_copy : int = type
@@ -384,7 +366,19 @@ class PBPacker:
 		else:
 			return data
 
-	@warning_ignore("untyped_declaration")
+	static func skip_unknown_field(bytes : PackedByteArray, offset : int, type : int) -> int:
+		if type == PB_TYPE.VARINT:
+			return offset + isolate_varint(bytes, offset).size()
+		if type == PB_TYPE.FIX64:
+			return offset + 8
+		if type == PB_TYPE.LENGTHDEL:
+			var length_bytes : PackedByteArray = isolate_varint(bytes, offset)
+			var length : int = unpack_varint(length_bytes)
+			return offset + length_bytes.size() + length
+		if type == PB_TYPE.FIX32:
+			return offset + 4
+		return PB_ERR.UNDEFINED_STATE
+
 	static func unpack_field(bytes : PackedByteArray, offset : int, field : PBField, type : int, message_func_ref) -> int:
 		if field.rule == PB_RULE.REPEATED && type != PB_TYPE.LENGTHDEL && field.option_packed:
 			var count = isolate_varint(bytes, offset)
@@ -485,18 +479,14 @@ class PBPacker:
 							else:
 								return offset
 						elif field.type == PB_DATA_TYPE.STRING:
-							var str_bytes : PackedByteArray = PackedByteArray()
-							for i in range(offset, inner_size + offset):
-								str_bytes.append(bytes[i])
+							var str_bytes : PackedByteArray = bytes.slice(offset, inner_size + offset)
 							if field.rule == PB_RULE.REPEATED:
 								field.value.append(str_bytes.get_string_from_utf8())
 							else:
 								field.value = str_bytes.get_string_from_utf8()
 							return offset + inner_size
 						elif field.type == PB_DATA_TYPE.BYTES:
-							var val_bytes : PackedByteArray = PackedByteArray()
-							for i in range(offset, inner_size + offset):
-								val_bytes.append(bytes[i])
+							var val_bytes : PackedByteArray = bytes.slice(offset, inner_size + offset)
 							if field.rule == PB_RULE.REPEATED:
 								field.value.append(val_bytes)
 							else:
@@ -508,7 +498,6 @@ class PBPacker:
 					return PB_ERR.LENGTHDEL_SIZE_NOT_FOUND
 		return PB_ERR.UNDEFINED_STATE
 
-	@warning_ignore("untyped_declaration")
 	static func unpack_message(data, bytes : PackedByteArray, offset : int, limit : int) -> int:
 		while true:
 			var tt : PBTypeTag = unpack_type_tag(bytes, offset)
@@ -530,11 +519,22 @@ class PBPacker:
 							return res
 						else:
 							break
+				else:
+					var res : int = skip_unknown_field(bytes, offset, tt.type)
+					if res > 0:
+						offset = res
+						if offset == limit:
+							return offset
+						elif offset > limit:
+							return PB_ERR.PACKAGE_SIZE_MISMATCH
+					elif res < 0:
+						return res
+					else:
+						break							
 			else:
 				return offset
 		return PB_ERR.UNDEFINED_STATE
 
-	@warning_ignore("untyped_declaration")
 	static func pack_message(data) -> PackedByteArray:
 		var DEFAULT_VALUES
 		if PROTO_VERSION == 2:
@@ -559,7 +559,6 @@ class PBPacker:
 				return PackedByteArray()
 		return result
 
-	@warning_ignore("untyped_declaration")
 	static func check_required(data) -> bool:
 		var keys : Array = data.keys()
 		for i in keys:
@@ -567,7 +566,6 @@ class PBPacker:
 				return false
 		return true
 
-	@warning_ignore("untyped_declaration")
 	static func construct_map(key_values):
 		var result = {}
 		for kv in key_values:
@@ -580,7 +578,6 @@ class PBPacker:
 			tab += DEBUG_TAB
 		return tab + text
 	
-	@warning_ignore("untyped_declaration")
 	static func value_to_string(value, field : PBField, nesting : int) -> String:
 		var result : String = ""
 		var text : String
@@ -610,7 +607,6 @@ class PBPacker:
 			result += str(value)
 		return result
 	
-	@warning_ignore("untyped_declaration")
 	static func field_to_string(field : PBField, nesting : int) -> String:
 		var result : String = tabulate(field.name + ": ", nesting)
 		if field.type == PB_DATA_TYPE.MAP:
@@ -647,8 +643,7 @@ class PBPacker:
 			result += value_to_string(field.value, field, nesting)
 		result += ";\n"
 		return result
-	
-	@warning_ignore("untyped_declaration")
+		
 	static func message_to_string(data, nesting : int = 0) -> String:
 		var DEFAULT_VALUES
 		if PROTO_VERSION == 2:
@@ -678,7 +673,6 @@ class PBPacker:
 
 
 class InputDictProto:
-	@warning_ignore("untyped_declaration")
 	func _init():
 		var service
 		
@@ -689,26 +683,20 @@ class InputDictProto:
 		service.func_ref = Callable(self, "add_empty_inputs")
 		data[__inputs.tag] = service
 		
-	@warning_ignore("untyped_declaration")
 	var data = {}
 	
 	var __inputs: PBField
-	@warning_ignore("untyped_declaration")
 	func get_raw_inputs():
 		return __inputs.value
-	@warning_ignore("untyped_declaration")
 	func get_inputs():
 		return PBPacker.construct_map(__inputs.value)
-	@warning_ignore("untyped_declaration")
 	func clear_inputs():
 		data[0].state = PB_SERVICE_STATE.UNFILLED
 		__inputs.value = DEFAULT_VALUES_3[PB_DATA_TYPE.MAP]
 	func add_empty_inputs() -> InputDictProto.map_type_inputs:
-		@warning_ignore("untyped_declaration")
 		var element = InputDictProto.map_type_inputs.new()
 		__inputs.value.append(element)
 		return element
-	@warning_ignore("untyped_declaration")
 	func add_inputs(a_key) -> InputDictProto.PlayerInputProto:
 		var idx = -1
 		for i in range(__inputs.value.size()):
@@ -724,7 +712,6 @@ class InputDictProto:
 		return element.new_value()
 	
 	class PlayerInputProto:
-		@warning_ignore("untyped_declaration")
 		func _init():
 			var service
 			
@@ -743,21 +730,26 @@ class InputDictProto:
 			service.field = __attack
 			data[__attack.tag] = service
 			
-		@warning_ignore("untyped_declaration")
 		var data = {}
 		
 		var __movement: PBField
-		@warning_ignore("untyped_declaration")
+		func has_movement() -> bool:
+			if __movement.value != null:
+				return true
+			return false
 		func get_movement():
 			return __movement.value
 		func clear_movement() -> void:
 			data[0].state = PB_SERVICE_STATE.UNFILLED
 			__movement.value = DEFAULT_VALUES_3[PB_DATA_TYPE.ENUM]
-		@warning_ignore("untyped_declaration")
 		func set_movement(value) -> void:
 			__movement.value = value
 		
 		var __jump: PBField
+		func has_jump() -> bool:
+			if __jump.value != null:
+				return true
+			return false
 		func get_jump() -> bool:
 			return __jump.value
 		func clear_jump() -> void:
@@ -767,6 +759,10 @@ class InputDictProto:
 			__jump.value = value
 		
 		var __attack: PBField
+		func has_attack() -> bool:
+			if __attack.value != null:
+				return true
+			return false
 		func get_attack() -> bool:
 			return __attack.value
 		func clear_attack() -> void:
@@ -777,8 +773,10 @@ class InputDictProto:
 		
 		enum Movement {
 			NONE = 0,
-			MOVE_RIGHT = 1,
-			MOVE_LEFT = 2
+			MOVE_FORWARD = 1,
+			MOVE_BACKWARD = 2,
+			MOVE_RIGHT = 3,
+			MOVE_LEFT = 4
 		}
 		
 		func _to_string() -> String:
@@ -788,11 +786,9 @@ class InputDictProto:
 			return PBPacker.pack_message(data)
 			
 		func from_bytes(bytes : PackedByteArray, offset : int = 0, limit : int = -1) -> int:
-			@warning_ignore("untyped_declaration")
 			var cur_limit = bytes.size()
 			if limit != -1:
 				cur_limit = limit
-			@warning_ignore("untyped_declaration")
 			var result = PBPacker.unpack_message(data, bytes, offset, cur_limit)
 			if result == cur_limit:
 				if PBPacker.check_required(data):
@@ -805,27 +801,29 @@ class InputDictProto:
 			return result
 		
 	class map_type_inputs:
-		@warning_ignore("untyped_declaration")
 		func _init():
 			var service
 			
-			__key = PBField.new("key", PB_DATA_TYPE.INT64, PB_RULE.REQUIRED, 1, true, DEFAULT_VALUES_3[PB_DATA_TYPE.INT64])
+			__key = PBField.new("key", PB_DATA_TYPE.INT64, PB_RULE.OPTIONAL, 1, true, DEFAULT_VALUES_3[PB_DATA_TYPE.INT64])
 			__key.is_map_field = true
 			service = PBServiceField.new()
 			service.field = __key
 			data[__key.tag] = service
 			
-			__value = PBField.new("value", PB_DATA_TYPE.MESSAGE, PB_RULE.REQUIRED, 2, true, DEFAULT_VALUES_3[PB_DATA_TYPE.MESSAGE])
+			__value = PBField.new("value", PB_DATA_TYPE.MESSAGE, PB_RULE.OPTIONAL, 2, true, DEFAULT_VALUES_3[PB_DATA_TYPE.MESSAGE])
 			__value.is_map_field = true
 			service = PBServiceField.new()
 			service.field = __value
 			service.func_ref = Callable(self, "new_value")
 			data[__value.tag] = service
 			
-		@warning_ignore("untyped_declaration")
 		var data = {}
 		
 		var __key: PBField
+		func has_key() -> bool:
+			if __key.value != null:
+				return true
+			return false
 		func get_key() -> int:
 			return __key.value
 		func clear_key() -> void:
@@ -835,6 +833,10 @@ class InputDictProto:
 			__key.value = value
 		
 		var __value: PBField
+		func has_value() -> bool:
+			if __value.value != null:
+				return true
+			return false
 		func get_value() -> InputDictProto.PlayerInputProto:
 			return __value.value
 		func clear_value() -> void:
@@ -850,7 +852,6 @@ class InputDictProto:
 		func to_bytes() -> PackedByteArray:
 			return PBPacker.pack_message(data)
 			
-		@warning_ignore("untyped_declaration")
 		func from_bytes(bytes : PackedByteArray, offset : int = 0, limit : int = -1) -> int:
 			var cur_limit = bytes.size()
 			if limit != -1:
@@ -872,7 +873,6 @@ class InputDictProto:
 	func to_bytes() -> PackedByteArray:
 		return PBPacker.pack_message(data)
 		
-	@warning_ignore("untyped_declaration")
 	func from_bytes(bytes : PackedByteArray, offset : int = 0, limit : int = -1) -> int:
 		var cur_limit = bytes.size()
 		if limit != -1:

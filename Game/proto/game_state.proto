@@ -15,9 +15,10 @@ message GameState {
 		int32 id = 0;
 		float position_x = 1;
 		float position_y = 2;
-		StateProto state = 3;
-		int32 health = 4;
-		string username = 5;
+		float position_z = 3;
+		StateProto state = 4;
+		int32 health = 5;
+		string username = 6;
 	}
 
 	message ProjectileProto {
@@ -25,9 +26,11 @@ message GameState {
 		int32 owner_id = 1;
 		float position_x = 2;
 		float position_y = 3;
-		float velocity_x = 4;
-		float velocity_y = 5;
-		int32 damage = 6;
+		float position_z = 4;
+		float velocity_x = 5;
+		float velocity_y = 6;
+		float velocity_z = 7;
+		int32 damage = 8;
 	}
 
 	int64 tick = 0;

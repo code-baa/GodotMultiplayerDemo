@@ -1,6 +1,5 @@
 extends Node
 
-class_name PlayerInput
 
 const enums = preload("res://Game/enums.gd")
 

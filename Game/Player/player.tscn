@@ -1,22 +1,28 @@
-[gd_scene load_steps=4 format=3 uid="uid://cp0lc4ylsdbh4"]
+[gd_scene load_steps=5 format=3 uid="uid://cp0lc4ylsdbh4"]
 
-[ext_resource type="Script" path="res://Game/Player/player.gd" id="1_siry4"]
-[ext_resource type="Texture2D" uid="uid://cvkc2y0w4cso0" path="res://Textures/player_face.png" id="2_q46a1"]
+[ext_resource type="Script" uid="uid://cgfcxkgtmqbdj" path="res://Game/Player/player.gd" id="1_siry4"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_0cm0s"]
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_m57qa"]
 
-[node name="Player" type="CharacterBody2D"]
+[sub_resource type="CapsuleMesh" id="CapsuleMesh_s3asc"]
+material = SubResource("StandardMaterial3D_m57qa")
+
+[sub_resource type="CapsuleShape3D" id="CapsuleShape3D_m57qa"]
+
+[node name="Player" type="CharacterBody3D"]
 collision_mask = 2
 script = ExtResource("1_siry4")
 
-[node name="Sprite2D" type="Sprite2D" parent="."]
-texture = ExtResource("2_q46a1")
+[node name="Camera3D" type="Camera3D" parent="."]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="."]
-shape = SubResource("RectangleShape2D_0cm0s")
+[node name="mesh" type="MeshInstance3D" parent="."]
+mesh = SubResource("CapsuleMesh_s3asc")
 
-[node name="FloorDetector" type="RayCast2D" parent="."]
-target_position = Vector2(0, 30)
+[node name="CollisionShape2D" type="CollisionShape3D" parent="."]
+shape = SubResource("CapsuleShape3D_m57qa")
+
+[node name="FloorDetector" type="RayCast3D" parent="."]
+target_position = Vector3(0, -30, 0)
 collision_mask = 2
 
 [node name="JumpTimer" type="Timer" parent="."]

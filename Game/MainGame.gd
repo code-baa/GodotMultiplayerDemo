@@ -1,4 +1,4 @@
-extends Node2D
+extends Node3D
 
 # The main scene that runs the simulation for both the client and the server/host.
 
@@ -34,9 +34,9 @@ func _ready() -> void:
 		local_player.add_projectile.connect(add_projectile)
 		add_child(local_player)
 	if MultiplayerManager.is_server:
-		var camera := Camera2D.new()
-		get_tree().root.add_child(camera)
-		camera.make_current()
+		#var camera := Camera3D.new()
+		#get_tree().root.add_child(camera)
+		#camera.make_current()
 		GameManager.server_game_ready()
 		return
 	if MultiplayerManager.is_host:
@@ -62,6 +62,7 @@ func update_player(p: GameState.GameState.PlayerProto) -> void:
 	other_players[p.get_id()].set_username(p.get_username())
 	other_players[p.get_id()].position.x = p.get_position_x()
 	other_players[p.get_id()].position.y = p.get_position_y()
+	other_players[p.get_id()].position.z = p.get_position_z()
 	other_players[p.get_id()].state = p.get_state()
 
 func remove_player(player_id: int) -> void:
@@ -75,8 +76,8 @@ func add_projectile_proto(p: GameState.GameState.ProjectileProto) -> void:
 	new_projectile.id = p.get_id()
 	new_projectile.owner_id = p.get_owner_id()
 	new_projectile.damage = p.get_damage()
-	new_projectile.position = Vector2(p.get_position_x(), p.get_position_y())
-	new_projectile.velocity = Vector2(p.get_velocity_x(), p.get_velocity_y())
+	new_projectile.position = Vector3(p.get_position_x(), p.get_position_y(), p.get_position_z())
+	new_projectile.velocity = Vector3(p.get_velocity_x(), p.get_velocity_y(), p.get_position_z())
 	if p.get_owner_id() not in other_player_projectiles:
 		other_player_projectiles[p.get_owner_id()] = {}
 	other_player_projectiles[p.get_owner_id()][p.get_id()] = new_projectile

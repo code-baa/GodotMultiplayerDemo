@@ -1,6 +1,6 @@
 [gd_scene load_steps=3 format=3 uid="uid://cu066fsw7evtj"]
 
-[ext_resource type="Script" path="res://UI/Lobby/lobby.gd" id="1_peo6a"]
+[ext_resource type="Script" uid="uid://6ln0q6gqwa5e" path="res://UI/Lobby/lobby.gd" id="1_peo6a"]
 
 [sub_resource type="Theme" id="Theme_abd5r"]
 default_font_size = 34

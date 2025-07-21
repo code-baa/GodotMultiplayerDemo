@@ -5,8 +5,10 @@ message InputDictProto {
 
         enum Movement {
             NONE = 0;
-            MOVE_RIGHT = 1;
-            MOVE_LEFT = 2;
+			MOVE_FORWARD = 1;
+			MOVE_BACKWARD = 2;
+            MOVE_RIGHT = 3;
+            MOVE_LEFT = 4;
         }
 
         Movement movement = 0;
