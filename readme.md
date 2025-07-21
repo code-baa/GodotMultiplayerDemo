@@ -5,7 +5,7 @@
 This project is a Godot 4.4 implementation of a multiplayer game using an authoritative server architecture with client side prediction, server reconciliation, and lag compensation.
 
 ### Originally made by [Seaciety](https://github.com/seaciety), this version features that same implementation in 3D. 
-**Lag compensation and PVP projectile hit detection is not yet configured and does not work in this version yet**
+**Lag compensation and PVP projectile hit detection is not yet configured and does not work in this version**
 
 ## Features
 
