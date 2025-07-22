@@ -1,0 +1,10 @@
+res://addons/protobuf/protobuf_ui_dock.tscn::cc727c66208bb22c33ab14df8ff37785::1747235625::res://.godot/exported/133200997/export-cac0aec5faee45a79f7773717a250ed8-protobuf_ui_dock.scn
+res://Game/Player/lag_compensation_player.tscn::d253597b7e55e95172837ab5250a9c99::1753146359::res://.godot/exported/133200997/export-506bae3f63272182e8185d70642834ac-lag_compensation_player.scn
+res://Game/Player/player.tscn::9ff458ee070a5d10b7c03ad60c75dd13::1753146359::res://.godot/exported/133200997/export-818ab5d351bb0a4978447b319d62dbcb-player.scn
+res://Game/Projectile/lag_compensation_projectile.tscn::429f8e826cca58e29030157651cff4ea::1753060943::res://.godot/exported/133200997/export-6f7fd91c935f08446f7b4269c785e3e8-lag_compensation_projectile.scn
+res://Game/Projectile/projectile.tscn::1b5260930cbc2b13872c75cd806a45a4::1753146359::res://.godot/exported/133200997/export-28acd2faaac760da37666f70702a4e65-projectile.scn
+res://Game/HUD.tscn::721405510cce5970b9d6c25b11297b73::1753146359::res://.godot/exported/133200997/export-f4f46a0d18e30e052fe8c9cac63ebab8-HUD.scn
+res://Game/MainGame.tscn::8012915b58dd2c2719531a10e4507d21::1753146359::res://.godot/exported/133200997/export-d399d2e830a0a3d4ff6a001349508e49-MainGame.scn
+res://UI/LoadScreen/Loading.tscn::49f11607cec855eca26ea82b870b5eca::1752524884::res://.godot/exported/133200997/export-7158316ee700eb8c979909b9e19658b3-Loading.scn
+res://UI/Lobby/lobby.tscn::69a4900e40cf019f45d15fe27c29e401::1752247734::res://.godot/exported/133200997/export-20db02c7dc617270835df3b3b0da1d28-lobby.scn
+res://UI/MainMenu/menu.tscn::db17a3b7cd56da6c504a08346832102c::1753146777::res://.godot/exported/133200997/export-939b710e82e1de324856159cd70f26f5-menu.scn
